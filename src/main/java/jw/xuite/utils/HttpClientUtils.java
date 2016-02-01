@@ -75,12 +75,12 @@ public class HttpClientUtils {
         return this;
     }
 
-    public int crawlPage(File outputFile, String url, int timeoutInMillis) throws Exception {
+    public int download(File outputFile, String url, int timeoutInMillis) throws Exception {
         setTimeoutInMillis(timeoutInMillis);
-        return crawlPage(outputFile, url);
+        return download(outputFile, url);
     }
 
-    public int crawlPage(File outputFile, String url) throws Exception {
+    public int download(File outputFile, String url) throws Exception {
         //create HTTP GET object
         final HttpGet GET = new HttpGet(url);
         GET.setHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
@@ -126,6 +126,59 @@ public class HttpClientUtils {
         return 1;
     }
 
+    public int downloadImage(File outputFile, String url) throws Exception {
+        InputStream is = null;
+        OutputStream os = null;
+        //create HTTP GET object
+        final HttpGet GET = new HttpGet(url);
+        GET.setHeader("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        GET.setHeader("Accept-Language", "zh-TW,zh;q=0.8,en-US;q=0.6,en;q=0.4,ja;q=0.2,zh-CN;q=0.2");
+        GET.setHeader("User-Agent", randUA());
+
+        //add referer
+        GET.setHeader("Refere", url);
+
+        CloseableHttpResponse responseGet = null;
+
+        LOG.info("Fetching url: " + url);
+
+        try {
+            //get response
+            responseGet = httpClient.execute(GET, clientContext);
+            //get response entity
+            final HttpEntity ENTITY = responseGet.getEntity();
+
+            if (ENTITY != null) {
+                //extract status code
+                final int STATUS_CODE = responseGet.getStatusLine().getStatusCode();
+
+                if (STATUS_CODE == HttpStatus.SC_OK) {
+                    is = new BufferedInputStream(ENTITY.getContent());
+                    os = new BufferedOutputStream(new FileOutputStream(outputFile));
+                    int inByte;
+                    while ((inByte = is.read()) != -1) {
+                        os.write(inByte);
+                    }
+                    return 0;
+                }
+            }
+        } catch (IOException e) {
+            LOG.error("Fetch exception: ", e);
+        } finally {
+            if (is != null) {
+                is.close();
+            }
+            if (os != null) {
+                os.close();
+            }
+            if (responseGet != null) {
+                responseGet.close();
+            }
+        }
+
+        return 1;
+    }
+
     /**
      * Read HTTP document text.
      *
@@ -134,6 +187,7 @@ public class HttpClientUtils {
      * @return
      * @throws IOException
      */
+
     private String readPlainContent(InputStream is, Charset charset) throws IOException {
         StringBuffer buffer = new StringBuffer();
 
